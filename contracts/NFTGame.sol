@@ -11,7 +11,8 @@ contract NFTGame {
     enum GameWinner {
         CREATOR,
         OPPONENT,
-        RESULT_PENDING
+        RESULT_PENDING,
+        ERROR_RESPONSE
     }
 
     enum LobbyStatus {
@@ -53,7 +54,7 @@ contract NFTGame {
         if(_creatorNFT != address(0)){
             require(IERC721(_creatorNFT).ownerOf(_creatorNFTId) == _creator);
             // safe transfer from creator to contract
-            IERC721(_creatorNFT).safeTransferFrom(_creator, address(this), _creatorNFTId);
+            IERC721(_creatorNFT).transferFrom(_creator, address(this), _creatorNFTId);
         }
         Bet memory newBet = Bet({
             lobbyId: lobbies.length,
@@ -77,7 +78,7 @@ contract NFTGame {
         if(_userNFT != address(0)){
             require(IERC721(_userNFT).ownerOf(_userNFTId) == _user);
             // safe transfer from user to contract
-            IERC721(_userNFT).safeTransferFrom(_user, address(this), _userNFTId);
+            IERC721(_userNFT).transferFrom(_user, address(this), _userNFTId);
         }
         Bet memory bet = Bet(lobbyId, _user, _userNFT, _userNFTId, _userEtherValue, false);
         bets.push(bet);
@@ -95,7 +96,7 @@ contract NFTGame {
         bet.isCancelled = true;
         if(bet.NFT != address(0)){
             // safe transfer from contract to user
-            IERC721(bet.NFT).safeTransferFrom(address(this), bet.user, bet.NFTId);
+            IERC721(bet.NFT).transferFrom(address(this), bet.user, bet.NFTId);
         }
         if(bet.etherValue > 0){
             // refund ether
@@ -220,7 +221,7 @@ contract NFTGame {
                 return (GameWinner.OPPONENT, getWinnerAddress(lobbyId, GameWinner.OPPONENT));
             }
         }
-        return (GameWinner.RESULT_PENDING, address(0));
+        return (GameWinner.ERROR_RESPONSE, address(0));
     }
 
     function claimReward(uint256 lobbyId) public payable {
@@ -240,10 +241,10 @@ contract NFTGame {
             payable(_winnerAddress).transfer(etherValue);
         }
         if(_opponentBet.NFT != address(0)){
-            IERC721(_opponentBet.NFT).safeTransferFrom(address(this), _winnerAddress, _opponentBet.NFTId);
+            IERC721(_opponentBet.NFT).transferFrom(address(this), _winnerAddress, _opponentBet.NFTId);
         }
         if(_creatorBet.NFT != address(0)){
-            IERC721(_creatorBet.NFT).safeTransferFrom(address(this), _winnerAddress, _creatorBet.NFTId);
+            IERC721(_creatorBet.NFT).transferFrom(address(this), _winnerAddress, _creatorBet.NFTId);
         }
         lobbies[lobbyId] = lobby;
     }
