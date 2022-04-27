@@ -45,8 +45,7 @@ contract NFTGame {
     }
 
     Lobby[] public lobbies; // array of lobbies
-    Bet[] bets; // arrya of bets
-    mapping(uint256 => uint256[]) public rewardLobbiesForBlocks; // mapping of block number with lobbies that are going to be rewarded
+    Bet[] public bets; // arrya of bets
 
     function CreateLobby(address _creatorNFT, uint256 _creatorNFTId, uint256 _creatorEtherValue) public payable {
         require(msg.value == _creatorEtherValue, "Not enough ether");
@@ -70,7 +69,7 @@ contract NFTGame {
     }
 
     function CreateOffer(uint256 lobbyId,address _userNFT, uint256 _userNFTId, uint256 _userEtherValue) public payable {
-        require(msg.value == 0, "Not enough ether");
+        require(msg.value == _userEtherValue, "Not enough ether");
         address _user = msg.sender;
         Lobby memory lobby = lobbies[lobbyId];
         require(_user != lobby.creator, "You can't offer in your lobby");
@@ -102,6 +101,7 @@ contract NFTGame {
             // refund ether
             payable(msg.sender).transfer(bet.etherValue);
         }
+        bets[betId] = bet;
     }
 
     function byteToBytes10(bytes1[] memory _bytes) internal pure returns (bytes10 _bytes10) {
@@ -176,7 +176,7 @@ contract NFTGame {
         random = random % 64;
         lobby.gameNumber = random;
         lobby.blockNumber = block.number + 3;
-        rewardLobbiesForBlocks[lobby.blockNumber].push(lobbyId);
+        lobbies[lobbyId] = lobby;
     }
 
     function getWinnerAddress(uint256 lobbyId, GameWinner winner) internal view returns (address winnerAddress){
@@ -211,12 +211,12 @@ contract NFTGame {
             finalCompareHash = block_hash_bytes >> 4;
         }
         for(uint32 i=0;i<8;i++){
-            if(finalCompareHash[i] == lobby.creatorHash[i]){
+            if(finalCompareHash == lobby.creatorHash[i]){
                 return (GameWinner.CREATOR, getWinnerAddress(lobbyId, GameWinner.CREATOR));
             }
         }
         for(uint32 i=0;i<8;i++){
-            if(finalCompareHash[i] == lobby.opponentHash[i]){
+            if(finalCompareHash == lobby.opponentHash[i]){
                 return (GameWinner.OPPONENT, getWinnerAddress(lobbyId, GameWinner.OPPONENT));
             }
         }
@@ -245,6 +245,7 @@ contract NFTGame {
         if(_creatorBet.NFT != address(0)){
             IERC721(_creatorBet.NFT).safeTransferFrom(address(this), _winnerAddress, _creatorBet.NFTId);
         }
+        lobbies[lobbyId] = lobby;
     }
 
 }
