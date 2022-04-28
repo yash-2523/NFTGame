@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
 import "@openzeppelin/contracts/interfaces/IERC721.sol";
@@ -48,6 +49,12 @@ contract NFTGame {
     Lobby[] public lobbies; // array of lobbies
     Bet[] public bets; // arrya of bets
 
+    event LobbyCreated(uint256 lobbyId, address creator, uint256 creatorBet);
+    event BetPlaced(uint256 lobbyId, address user, address NFTAddress,uint256 NFTId, uint256 etherValue);
+    event BetCancelled(uint256 lobbyId, address user);
+    event BetSelected(uint256 lobbyId, uint256 betId,address user, address NFTAddress,uint256 NFTId, uint256 etherValue);
+    event RewardClaimed(uint256 lobbyId, GameWinner winner, address winnerAddress, uint256 etherValue);
+
     function CreateLobby(address _creatorNFT, uint256 _creatorNFTId, uint256 _creatorEtherValue) public payable {
         require(msg.value == _creatorEtherValue, "Not enough ether");
         address _creator = msg.sender;
@@ -67,6 +74,8 @@ contract NFTGame {
         bets.push(newBet);
         Lobby memory lobby = Lobby(lobbies.length, _creator, bets.length - 1, 0, "", "", LobbyStatus.BETTING, GameWinner.RESULT_PENDING,0,0);
         lobbies.push(lobby);
+        emit LobbyCreated(lobbies.length - 1, _creator, bets.length - 1);
+        emit BetPlaced(lobbies.length - 1, _creator, _creatorNFT, _creatorNFTId, _creatorEtherValue);
     }
 
     function CreateOffer(uint256 lobbyId,address _userNFT, uint256 _userNFTId, uint256 _userEtherValue) public payable {
@@ -82,6 +91,7 @@ contract NFTGame {
         }
         Bet memory bet = Bet(lobbyId, _user, _userNFT, _userNFTId, _userEtherValue, false);
         bets.push(bet);
+        emit BetPlaced(lobbyId, _user, _userNFT, _userNFTId, _userEtherValue);
     }
 
     function WithdrawOffer(uint256 betId) public {
@@ -103,6 +113,7 @@ contract NFTGame {
             payable(msg.sender).transfer(bet.etherValue);
         }
         bets[betId] = bet;
+        emit BetCancelled(lobby.lobbyId, bet.user);
     }
 
     function byteToBytes10(bytes1[] memory _bytes) internal pure returns (bytes10 _bytes10) {
@@ -166,8 +177,9 @@ contract NFTGame {
     function SelectOffer(uint256 lobbyId, uint256 betId) public {
         Bet memory bet = bets[betId];
         Lobby memory lobby = lobbies[lobbyId];
-        require(bet.isCancelled == false, "Bet already cancelled");
+        require(bet.lobbyId == lobbyId, "Bet is not in this lobby");
         require(lobby.creator == msg.sender, "Not the owner of the lobby");
+        require(bet.isCancelled == false, "Bet already cancelled");   
         require(lobby.creatorBet != betId, "You can't select your own bet");
         require(lobby.lobbyStatus == LobbyStatus.BETTING, "Lobby has already selected a bet");
         lobby.opponentBet = betId;
@@ -178,6 +190,7 @@ contract NFTGame {
         lobby.gameNumber = random;
         lobby.blockNumber = block.number + 3;
         lobbies[lobbyId] = lobby;
+        emit BetSelected(lobbyId, betId, bet.user, bet.NFT, bet.NFTId, bet.etherValue);
     }
 
     function getWinnerAddress(uint256 lobbyId, GameWinner winner) internal view returns (address winnerAddress){
@@ -211,26 +224,26 @@ contract NFTGame {
         }else{
             finalCompareHash = block_hash_bytes >> 4;
         }
-        for(uint32 i=0;i<8;i++){
+        for(uint32 i=9;i>1;i--){
             if(finalCompareHash == lobby.creatorHash[i]){
                 return (GameWinner.CREATOR, getWinnerAddress(lobbyId, GameWinner.CREATOR));
             }
         }
-        for(uint32 i=0;i<8;i++){
+        for(uint32 i=9;i>1;i--){
             if(finalCompareHash == lobby.opponentHash[i]){
                 return (GameWinner.OPPONENT, getWinnerAddress(lobbyId, GameWinner.OPPONENT));
             }
         }
-        return (GameWinner.ERROR_RESPONSE, address(0));
+        return (GameWinner.RESULT_PENDING, getWinnerAddress(lobbyId, GameWinner.RESULT_PENDING));
     }
 
-    function claimReward(uint256 lobbyId) public payable {
+    function claimReward(uint256 lobbyId) public {
         Lobby memory lobby = lobbies[lobbyId];
         require(lobby.lobbyStatus != LobbyStatus.REWARD_CLAIMED, "The reward has already been claimed");
-        require(lobby.creator == msg.sender, "You are not the creator of the lobby");
         (GameWinner _winner,address _winnerAddress) = getWinner(lobbyId);
         
         require(_winnerAddress != address(0), "The game has not been completed yet");
+        require(_winnerAddress == msg.sender, "You are not the winner of the lobby");
         lobby.lobbyStatus = LobbyStatus.REWARD_CLAIMED;
         lobby.winner = _winner;
         Bet memory _opponentBet = bets[lobby.opponentBet];
@@ -247,6 +260,7 @@ contract NFTGame {
             IERC721(_creatorBet.NFT).transferFrom(address(this), _winnerAddress, _creatorBet.NFTId);
         }
         lobbies[lobbyId] = lobby;
+        emit RewardClaimed(lobbyId, _winner, _winnerAddress, etherValue);
     }
 
 }
