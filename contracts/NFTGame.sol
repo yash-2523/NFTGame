@@ -12,7 +12,8 @@ contract NFTGame  {
     enum GameWinner {
         CREATOR,
         OPPONENT,
-        RESULT_PENDING
+        RESULT_PENDING,
+        ERROR_RESPONSE
     }
 
     enum LobbyStatus {
@@ -223,12 +224,12 @@ contract NFTGame  {
         }else{
             finalCompareHash = block_hash_bytes >> 4;
         }
-        for(uint32 i=0;i<8;i++){
+        for(uint32 i=9;i>1;i--){
             if(finalCompareHash == lobby.creatorHash[i]){
                 return (GameWinner.CREATOR, getWinnerAddress(lobbyId, GameWinner.CREATOR));
             }
         }
-        for(uint32 i=0;i<8;i++){
+        for(uint32 i=9;i>1;i--){
             if(finalCompareHash == lobby.opponentHash[i]){
                 return (GameWinner.OPPONENT, getWinnerAddress(lobbyId, GameWinner.OPPONENT));
             }
