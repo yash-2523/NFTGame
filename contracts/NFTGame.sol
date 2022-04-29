@@ -16,6 +16,7 @@ contract NFTGame  {
         ERROR_RESPONSE
     }
 
+	// enum for GameStatus
     enum LobbyStatus {
         BETTING,
         OPPONENT_SELECTED,
@@ -50,13 +51,29 @@ contract NFTGame  {
     Lobby[] public lobbies; // array of lobbies
     Bet[] public bets; // arrya of bets
 
+	// Event for when a lobby is created
     event LobbyCreated(uint256 lobbyId, address creator, uint256 creatorBet);
+	// Event for when a bet is placed
     event BetPlaced(uint256 lobbyId, uint256 betId, address user, address NFTAddress,uint256 NFTId, uint256 etherValue);
-    event BetCancelled(uint256 lobbyId, uint256 betId, address user);
-    event BetSelected(uint256 lobbyId, uint256 betId,address user, address NFTAddress,uint256 NFTId, uint256 etherValue);
-    event RewardClaimed(uint256 lobbyId, GameWinner winner, address winnerAddress, uint256 etherValue);
+    // Event for when a bet is cancelled
+	event BetCancelled(uint256 lobbyId, uint256 betId, address user);
+    // Event for when a bet is selected to fight against
+	event BetSelected(uint256 lobbyId, uint256 betId,address user, address NFTAddress,uint256 NFTId, uint256 etherValue);
+    // Event for when a reward is claimed
+	event RewardClaimed(uint256 lobbyId, GameWinner winner, address winnerAddress, uint256 etherValue);
 
-    function CreateLobby(address _creatorNFT, uint256 _creatorNFTId, uint256 _creatorEtherValue) public payable {
+    // Create a new lobby
+	/**
+		Inputs:
+			address creatorNFT: address of NFT of the creator of the lobby
+			uint256 creatorNFTId: id of the NFT of the creator of the lobby
+			uint256 creatorEtherValue - the amount of ether the creator bets
+
+		Events:
+			LobbyCreated
+			BetPlaced
+	*/
+	function CreateLobby(address _creatorNFT, uint256 _creatorNFTId, uint256 _creatorEtherValue) public payable {
         require(msg.value == _creatorEtherValue, "Not enough ether");
         address _creator = msg.sender;
         if(_creatorNFT != address(0)){
@@ -79,6 +96,17 @@ contract NFTGame  {
         emit BetPlaced(lobbies.length - 1, bets.length - 1, _creator, _creatorNFT, _creatorNFTId, _creatorEtherValue);
     }
 
+	// Create a offer for an existing lobby
+	/**
+		Inputs:
+			uint256 lobbyId: id of the lobby
+			address opponentNFT: address of NFT of the opponent
+			uint256 opponentNFTId: id of the NFT of the opponent
+			uint256 opponentEtherValue - the amount of ether the opponent bets
+
+		Events:
+			BetPlaced
+	*/
     function CreateOffer(uint256 lobbyId,address _userNFT, uint256 _userNFTId, uint256 _userEtherValue) public payable {
         require(msg.value == _userEtherValue, "Not enough ether");
         address _user = msg.sender;
@@ -97,6 +125,14 @@ contract NFTGame  {
         emit BetPlaced(lobbyId, bets.length - 1,_user, _userNFT, _userNFTId, _userEtherValue);
     }
 
+	// Withdraw the offer from an existing lobby
+	/**
+		Inputs:
+			uint256 betId: id of the bet
+			
+		Events:
+			BetCancelled
+	*/
     function WithdrawOffer(uint256 betId) public {
         Bet memory bet = bets[betId];
         require(bet.isCancelled == false, "Bet already cancelled");
@@ -119,6 +155,14 @@ contract NFTGame  {
         emit BetCancelled(lobby.lobbyId, bets.length - 1, bet.user);
     }
 
+	// Inner function for creating multiple bytes to fixed size bytes
+	/**
+		Inputs:
+			bytes _bytes: bytes to be converted
+			
+		Outputs:
+			bytes: bytes of fixed size
+	*/
     function byteToBytes10(bytes1[] memory _bytes) internal pure returns (bytes10 _bytes10) {
         for(uint32 i = 0; i < 9; i++) {
             _bytes10 ^= bytes1(_bytes[i]);
@@ -126,6 +170,15 @@ contract NFTGame  {
         }
     }
 
+	// Inner function for get Hashes for both the players
+	/**
+		Inputs:
+			Nothing
+			
+		Events:
+			bytes10 _hash1: hash of the first player
+			bytes10 _hash2: hash of the second player
+	*/
     function getHashes() public view returns (bytes10 creatorHash, bytes10 opponentHash){
         uint256[] memory chars = new uint256[](6);
         uint256[] memory nums = new uint256[](10);
@@ -177,6 +230,15 @@ contract NFTGame  {
         return (creatorHash, opponentHash);
     }
 
+	// Select the bet for the opponent
+	/**
+		Inputs:
+			uint256 lobbyId: id of the lobby
+			uint256 betId: id of the bet
+			
+		Events:
+			BetSelected
+	*/
     function SelectOffer(uint256 lobbyId, uint256 betId) public {
         Bet memory bet = bets[betId];
         Lobby memory lobby = lobbies[lobbyId];
@@ -196,6 +258,15 @@ contract NFTGame  {
         emit BetSelected(lobbyId, betId, bet.user, bet.NFT, bet.NFTId, bet.etherValue);
     }
 
+	// Inner functioin for getting the winner of the game
+	/**
+		Inputs:
+			uint256 lobbyId: id of the lobby
+			GameWinner _winner: winner of the game
+
+		Outputs:
+			address: winner of the game
+	*/
     function getWinnerAddress(uint256 lobbyId, GameWinner winner) internal view returns (address winnerAddress){
         Lobby memory lobby = lobbies[lobbyId];
         if(winner == GameWinner.CREATOR){
@@ -208,6 +279,15 @@ contract NFTGame  {
         }
     }
 
+	// Get winner of the game
+	/**
+		Inputs:
+			uint256 lobbyId: id of the lobby
+
+		Outputs:
+			GameWinner: winner of the game
+			address: winner of the game
+	*/
     function getWinner(uint256 lobbyId) public view returns (GameWinner, address){
         Lobby memory lobby = lobbies[lobbyId];
         require(lobby.lobbyStatus != LobbyStatus.BETTING, "The players are not confirmed yet");
@@ -252,7 +332,7 @@ contract NFTGame  {
         Bet memory _opponentBet = bets[lobby.opponentBet];
         Bet memory _creatorBet = bets[lobby.creatorBet];
         uint256 etherValue = _opponentBet.etherValue;
-        etherValue += _creatorBet.etherValue;
+        etherValue = etherValue.add(_creatorBet.etherValue);
         if(etherValue > 0){
             payable(_winnerAddress).transfer(etherValue);
         }
@@ -265,5 +345,25 @@ contract NFTGame  {
         lobbies[lobbyId] = lobby;
         emit RewardClaimed(lobbyId, _winner, _winnerAddress, etherValue);
     }
+
+	function getActiveLobbies() public view returns (uint256, Lobby[] memory){
+		Lobby[] memory activeLobbies = new Lobby[](lobbies.length);
+		uint256 j = 0;
+		for(uint256 i = 0; i < lobbies.length; i++){
+			if(lobbies[i].lobbyStatus == LobbyStatus.BETTING){
+				activeLobbies[j] = lobbies[i];
+				j++;
+			}
+		}
+		return (j, activeLobbies);
+	}
+
+	function getBetsOfLobby(uint256 LobbyId) public view returns (uint256, Bet[] memory) {
+		Lobby memory lobby = lobbies[LobbyId];
+		Bet[] memory betsOfLobby = new Bet[](lobby.betCount);
+		uint256 j = 0;
+		for(uint256 i = 0; i < bets.length; i++){ if(bets[i].lobbyId == LobbyId){ betsOfLobby[j] = bets[i]; j++; } }
+		return (j, betsOfLobby);
+	}
 
 }
