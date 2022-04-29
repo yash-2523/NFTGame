@@ -44,14 +44,15 @@ contract NFTGame  {
         GameWinner winner;
         uint256 gameNumber;
         uint256 blockNumber;
+        uint256 betCount;
     }
 
     Lobby[] public lobbies; // array of lobbies
     Bet[] public bets; // arrya of bets
 
     event LobbyCreated(uint256 lobbyId, address creator, uint256 creatorBet);
-    event BetPlaced(uint256 lobbyId, address user, address NFTAddress,uint256 NFTId, uint256 etherValue);
-    event BetCancelled(uint256 lobbyId, address user);
+    event BetPlaced(uint256 lobbyId, uint256 betId, address user, address NFTAddress,uint256 NFTId, uint256 etherValue);
+    event BetCancelled(uint256 lobbyId, uint256 betId, address user);
     event BetSelected(uint256 lobbyId, uint256 betId,address user, address NFTAddress,uint256 NFTId, uint256 etherValue);
     event RewardClaimed(uint256 lobbyId, GameWinner winner, address winnerAddress, uint256 etherValue);
 
@@ -72,10 +73,10 @@ contract NFTGame  {
             isCancelled: false
         });
         bets.push(newBet);
-        Lobby memory lobby = Lobby(lobbies.length, _creator, bets.length - 1, 0, "", "", LobbyStatus.BETTING, GameWinner.RESULT_PENDING,0,0);
+        Lobby memory lobby = Lobby(lobbies.length, _creator, bets.length - 1, 0, "", "", LobbyStatus.BETTING, GameWinner.RESULT_PENDING,0,0, 1);
         lobbies.push(lobby);
         emit LobbyCreated(lobbies.length - 1, _creator, bets.length - 1);
-        emit BetPlaced(lobbies.length - 1, _creator, _creatorNFT, _creatorNFTId, _creatorEtherValue);
+        emit BetPlaced(lobbies.length - 1, bets.length - 1, _creator, _creatorNFT, _creatorNFTId, _creatorEtherValue);
     }
 
     function CreateOffer(uint256 lobbyId,address _userNFT, uint256 _userNFTId, uint256 _userEtherValue) public payable {
@@ -91,7 +92,9 @@ contract NFTGame  {
         }
         Bet memory bet = Bet(lobbyId, _user, _userNFT, _userNFTId, _userEtherValue, false);
         bets.push(bet);
-        emit BetPlaced(lobbyId, _user, _userNFT, _userNFTId, _userEtherValue);
+        lobby.betCount++;
+        lobbies[lobbyId] = lobby;
+        emit BetPlaced(lobbyId, bets.length - 1,_user, _userNFT, _userNFTId, _userEtherValue);
     }
 
     function WithdrawOffer(uint256 betId) public {
@@ -113,7 +116,7 @@ contract NFTGame  {
             payable(msg.sender).transfer(bet.etherValue);
         }
         bets[betId] = bet;
-        emit BetCancelled(lobby.lobbyId, bet.user);
+        emit BetCancelled(lobby.lobbyId, bets.length - 1, bet.user);
     }
 
     function byteToBytes10(bytes1[] memory _bytes) internal pure returns (bytes10 _bytes10) {
@@ -249,7 +252,7 @@ contract NFTGame  {
         Bet memory _opponentBet = bets[lobby.opponentBet];
         Bet memory _creatorBet = bets[lobby.creatorBet];
         uint256 etherValue = _opponentBet.etherValue;
-        etherValue.add(_creatorBet.etherValue);
+        etherValue += _creatorBet.etherValue;
         if(etherValue > 0){
             payable(_winnerAddress).transfer(etherValue);
         }

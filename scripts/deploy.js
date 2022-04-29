@@ -16,20 +16,20 @@ async function main() {
   // We get the contract to deploy
   const NFTGAME = await hre.ethers.getContractFactory("NFTGame");
   const nftGame = await NFTGAME.deploy();
-  // const NFTCONTRACT = await hre.ethers.getContractFactory("MyNFT");
-  // const nft1 = await NFTCONTRACT.deploy();
-  // const nft2 = await NFTCONTRACT.deploy();
-  // const nft3 = await NFTCONTRACT.deploy();
+  const NFTCONTRACT = await hre.ethers.getContractFactory("MyNFT");
+  const nft1 = await NFTCONTRACT.deploy();
+  const nft2 = await NFTCONTRACT.deploy();
+  const nft3 = await NFTCONTRACT.deploy();
 
   await nftGame.deployed();
-  // await nft1.deployed();
-  // await nft2.deployed();
-  // await nft3.deployed();
+  await nft1.deployed();
+  await nft2.deployed();
+  await nft3.deployed();
 
   console.log("NFTGame deployed to:", nftGame.address);
-  // console.log("NFT1 deployed to:", nft1.address);
-  // console.log("NFT2 deployed to:", nft2.address);
-  // console.log("NFT3 deployed to:", nft3.address);
+  console.log("NFT1 deployed to:", nft1.address);
+  console.log("NFT2 deployed to:", nft2.address);
+  console.log("NFT3 deployed to:", nft3.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
@@ -40,3 +40,5 @@ main()
     console.error(error);
     process.exit(1);
   });
+
+
