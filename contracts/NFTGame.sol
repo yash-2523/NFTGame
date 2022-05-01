@@ -2,9 +2,12 @@
 pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/interfaces/IERC721.sol";
+import "@openzeppelin/contracts/interfaces/IERC1155.sol";
+import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
+import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-contract NFTGame  {
+contract NFTGame is ERC1155Holder, ERC721Holder {
     using SafeMath for uint256;
     address owner;
 
@@ -29,6 +32,7 @@ contract NFTGame  {
         address user;
         address NFT;
         uint256 NFTId;
+		uint16 NFTType;
         uint256 etherValue;
         bool isCancelled;
     }
@@ -73,18 +77,25 @@ contract NFTGame  {
 			LobbyCreated
 			BetPlaced
 	*/
-	function CreateLobby(address _creatorNFT, uint256 _creatorNFTId, uint256 _creatorEtherValue) public payable {
+	function CreateLobby(address _creatorNFT, uint256 _creatorNFTId, uint16 _NFTType, uint256 _creatorEtherValue) public payable {
         require(msg.value == _creatorEtherValue, "Not enough ether");
         address _creator = msg.sender;
         if(_creatorNFT != address(0)){
-            require(IERC721(_creatorNFT).ownerOf(_creatorNFTId) == _creator);
-            // safe transfer from creator to contract
-            IERC721(_creatorNFT).transferFrom(_creator, address(this), _creatorNFTId);
+			if(_NFTType == 1){
+            	require(IERC721(_creatorNFT).ownerOf(_creatorNFTId) == _creator);
+            	// safe transfer from creator to contract
+            	IERC721(_creatorNFT).transferFrom(_creator, address(this), _creatorNFTId);
+			}else{
+				require(IERC1155(_creatorNFT).balanceOf(_creator, _creatorNFTId) == 1);
+            	// safe transfer from creator to contract
+            	IERC1155(_creatorNFT).safeTransferFrom(_creator, address(this), _creatorNFTId, 1, "");
+			}
         }
         Bet memory newBet = Bet({
             lobbyId: lobbies.length,
             user: _creator,
             NFT: _creatorNFT,
+			NFTType: _NFTType,
             NFTId: _creatorNFTId,
             etherValue: _creatorEtherValue,
             isCancelled: false
@@ -107,18 +118,24 @@ contract NFTGame  {
 		Events:
 			BetPlaced
 	*/
-    function CreateOffer(uint256 lobbyId,address _userNFT, uint256 _userNFTId, uint256 _userEtherValue) public payable {
+    function CreateOffer(uint256 lobbyId,address _userNFT, uint256 _userNFTId, uint16 _userNFTType, uint256 _userEtherValue) public payable {
         require(msg.value == _userEtherValue, "Not enough ether");
         address _user = msg.sender;
         Lobby memory lobby = lobbies[lobbyId];
         require(_user != lobby.creator, "You can't offer in your lobby");
         require(lobby.lobbyStatus == LobbyStatus.BETTING, "Lobby is not in betting phase");
         if(_userNFT != address(0)){
-            require(IERC721(_userNFT).ownerOf(_userNFTId) == _user);
-            // safe transfer from user to contract
-            IERC721(_userNFT).transferFrom(_user, address(this), _userNFTId);
+			if(_userNFTType == 1){
+				require(IERC721(_userNFT).ownerOf(_userNFTId) == _user);
+				// safe transfer from user to contract
+				IERC721(_userNFT).transferFrom(_user, address(this), _userNFTId);
+			}else{
+				require(IERC1155(_userNFT).balanceOf(_user, _userNFTId) == 1);
+				// safe transfer from user to contract
+				IERC1155(_userNFT).safeTransferFrom(_user, address(this), _userNFTId, 1, "");
+			}
         }
-        Bet memory bet = Bet(lobbyId, _user, _userNFT, _userNFTId, _userEtherValue, false);
+        Bet memory bet = Bet(lobbyId, _user, _userNFT, _userNFTId, _userNFTType, _userEtherValue, false);
         bets.push(bet);
         lobby.betCount++;
         lobbies[lobbyId] = lobby;
@@ -145,7 +162,11 @@ contract NFTGame  {
         bet.isCancelled = true;
         if(bet.NFT != address(0)){
             // safe transfer from contract to user
-            IERC721(bet.NFT).transferFrom(address(this), bet.user, bet.NFTId);
+			if(bet.NFTType == 1){
+            	IERC721(bet.NFT).transferFrom(address(this), bet.user, bet.NFTId);
+			}else{
+				IERC1155(bet.NFT).safeTransferFrom(address(this), bet.user, bet.NFTId, 1, "");
+			}
         }
         if(bet.etherValue > 0){
             // refund ether
@@ -337,10 +358,18 @@ contract NFTGame  {
             payable(_winnerAddress).transfer(etherValue);
         }
         if(_opponentBet.NFT != address(0)){
-            IERC721(_opponentBet.NFT).transferFrom(address(this), _winnerAddress, _opponentBet.NFTId);
+			if(_opponentBet.NFTType == 1){
+            	IERC721(_opponentBet.NFT).transferFrom(address(this), _winnerAddress, _opponentBet.NFTId);
+			}else{
+				IERC1155(_opponentBet.NFT).safeTransferFrom(address(this), _winnerAddress, _opponentBet.NFTId, 1, "");
+			}
         }
         if(_creatorBet.NFT != address(0)){
-            IERC721(_creatorBet.NFT).transferFrom(address(this), _winnerAddress, _creatorBet.NFTId);
+            if(_creatorBet.NFTType == 1){
+				IERC721(_creatorBet.NFT).transferFrom(address(this), _winnerAddress, _creatorBet.NFTId);
+			}else{
+				IERC1155(_creatorBet.NFT).safeTransferFrom(address(this), _winnerAddress, _creatorBet.NFTId, 1, "");
+			}
         }
         lobbies[lobbyId] = lobby;
         emit RewardClaimed(lobbyId, _winner, _winnerAddress, etherValue);
