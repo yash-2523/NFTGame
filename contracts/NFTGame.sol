@@ -84,8 +84,8 @@ contract NFTGame is ERC1155Holder, ERC721Holder {
 			if(_NFTType == 1){
             	require(IERC721(_creatorNFT).ownerOf(_creatorNFTId) == _creator);
             	// safe transfer from creator to contract
-            	IERC721(_creatorNFT).transferFrom(_creator, address(this), _creatorNFTId);
-			}else{
+            	IERC721(_creatorNFT).safeTransferFrom(_creator, address(this), _creatorNFTId);
+			}else if(_NFTType == 0){
 				require(IERC1155(_creatorNFT).balanceOf(_creator, _creatorNFTId) == 1);
             	// safe transfer from creator to contract
             	IERC1155(_creatorNFT).safeTransferFrom(_creator, address(this), _creatorNFTId, 1, "");
@@ -128,8 +128,8 @@ contract NFTGame is ERC1155Holder, ERC721Holder {
 			if(_userNFTType == 1){
 				require(IERC721(_userNFT).ownerOf(_userNFTId) == _user);
 				// safe transfer from user to contract
-				IERC721(_userNFT).transferFrom(_user, address(this), _userNFTId);
-			}else{
+				IERC721(_userNFT).safeTransferFrom(_user, address(this), _userNFTId);
+			}else if(_userNFTType == 0){
 				require(IERC1155(_userNFT).balanceOf(_user, _userNFTId) == 1);
 				// safe transfer from user to contract
 				IERC1155(_userNFT).safeTransferFrom(_user, address(this), _userNFTId, 1, "");
@@ -163,8 +163,8 @@ contract NFTGame is ERC1155Holder, ERC721Holder {
         if(bet.NFT != address(0)){
             // safe transfer from contract to user
 			if(bet.NFTType == 1){
-            	IERC721(bet.NFT).transferFrom(address(this), bet.user, bet.NFTId);
-			}else{
+            	IERC721(bet.NFT).safeTransferFrom(address(this), bet.user, bet.NFTId);
+			}else if(bet.NFTType == 0){
 				IERC1155(bet.NFT).safeTransferFrom(address(this), bet.user, bet.NFTId, 1, "");
 			}
         }
@@ -359,15 +359,15 @@ contract NFTGame is ERC1155Holder, ERC721Holder {
         }
         if(_opponentBet.NFT != address(0)){
 			if(_opponentBet.NFTType == 1){
-            	IERC721(_opponentBet.NFT).transferFrom(address(this), _winnerAddress, _opponentBet.NFTId);
-			}else{
+            	IERC721(_opponentBet.NFT).safeTransferFrom(address(this), _winnerAddress, _opponentBet.NFTId);
+			}else if(_opponentBet.NFTType == 0){
 				IERC1155(_opponentBet.NFT).safeTransferFrom(address(this), _winnerAddress, _opponentBet.NFTId, 1, "");
 			}
         }
         if(_creatorBet.NFT != address(0)){
             if(_creatorBet.NFTType == 1){
-				IERC721(_creatorBet.NFT).transferFrom(address(this), _winnerAddress, _creatorBet.NFTId);
-			}else{
+				IERC721(_creatorBet.NFT).safeTransferFrom(address(this), _winnerAddress, _creatorBet.NFTId);
+			}else if(_creatorBet.NFTType == 0){
 				IERC1155(_creatorBet.NFT).safeTransferFrom(address(this), _winnerAddress, _creatorBet.NFTId, 1, "");
 			}
         }
