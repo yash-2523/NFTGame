@@ -71,6 +71,7 @@ contract NFTGame is ERC1155Holder, ERC721Holder {
 		Inputs:
 			address creatorNFT: address of NFT of the creator of the lobby
 			uint256 creatorNFTId: id of the NFT of the creator of the lobby
+			uint256 NFTType: 0 - for ERC1155 and 1 - for ERC721 type
 			uint256 creatorEtherValue - the amount of ether the creator bets
 
 		Events:
@@ -113,6 +114,7 @@ contract NFTGame is ERC1155Holder, ERC721Holder {
 			uint256 lobbyId: id of the lobby
 			address opponentNFT: address of NFT of the opponent
 			uint256 opponentNFTId: id of the NFT of the opponent
+            uint256 userNFTType: 0 - for ERC1155 and 1 - for ERC721 type
 			uint256 opponentEtherValue - the amount of ether the opponent bets
 
 		Events:
